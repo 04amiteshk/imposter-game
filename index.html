@@ -570,35 +570,47 @@ async function pollLobby(code){
       <div style="font-size:13px;color:${in_?'#00C264':'#2a2a2a'};margin-left:6px">${in_?'Joined':'Waiting'}</div>
     </div>`;
   }).join('');
-  const sb=$('start-btn');
-  if(n>=3){sb.className='btn';sb.textContent=`Start Game · ${n} players`;}
-  else{sb.className='btn off';sb.textContent=n===0?'Waiting for players…':`Need ${3-n} more to start`;}
+  const joinedCount = Object.keys(data.joined || {}).length;
+
+if(joinedCount >= 3){
+  $('start-btn').className = 'btn';
+  $('start-btn').textContent = 'Start Game';
+} else {
+  $('start-btn').className = 'btn off';
+  $('start-btn').textContent = `Waiting for players…`;
+}
 }
 
-async function startGame(){
-  const data=await dbGet(_hostCode);
-  if(!data)return;
-  const joined=Object.keys(data.joined||{});
-  if(joined.length<3)return;
-  const cat=data.category, word=pick(BANKS[cat]);
-  const sp=shuffle([...joined]);
-  const impSet=new Set(shuffle(sp.map((_,i)=>i)).slice(0,data.impostors));
-  const roles={};
-  sp.forEach((name,i)=>{ roles[name]={isImpostor:impSet.has(i),word:impSet.has(i)?null:word,category:cat,impostors:data.impostors,total:joined.length}; });
-  await fetch(`${FB_URL}/games/${code}/status.json`, {
-  method:"PUT",
-  body: JSON.stringify("started")
-});
+async function startGame() {
+  if(!_hostCode) return;
 
-fetch(`${FB_URL}/games/${code}/roles.json`, {
-  method:"PUT",
-  body: JSON.stringify(roles)
-});
-  stopPoll();
-  lsDel('HOST');
-  $('resume-wrap').style.display='none';
-  alert(`Game started! All ${joined.length} players can now tap their cards.`);
-  go('home');
+  const data = await dbGet(_hostCode);
+  if(!data) return;
+
+  const players = data.players || [];
+  const nImp = data.imposters || 1;
+  const category = data.category;
+
+  if(players.length < 3) return;
+
+  const wordList = BANKS[category] || [];
+  const word = pick(wordList);
+
+  const shuffled = shuffle(players);
+
+  const roles = {};
+  shuffled.forEach((p, i) => {
+    if(i < nImp) {
+      roles[p] = { role: 'imposter' };
+    } else {
+      roles[p] = { role: 'crew', word };
+    }
+  });
+
+  await dbPatch(_hostCode, {
+    status: 'started',
+    roles
+  });
 }
 
 async function cancelGame(){
