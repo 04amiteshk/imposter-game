@@ -721,7 +721,14 @@ async function confirmName(){
     $('name-feedback').innerHTML=`<div style="color:#FF2441;font-size:14px;margin-top:4px">⚠️ Someone just took that name. Try again.</div>`;
     _pendingMatch=null;$('join-btn').className='btn off';$('join-btn').textContent='Type your name first';return;
   }
-  await dbPatch(code,{joined:{[name]:true}});
+  await fetch(
+  `${FB_URL}/games/${code}/joined/${encodeURIComponent(name)}.json`,
+  {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: 'true'
+  }
+);
   lsSet('PCODE',code); lsSet('PNAME_'+code,name);
   _myName=name;
   startWaiting(code,name,fresh);
