@@ -578,7 +578,15 @@ async function startGame(){
   const impSet=new Set(shuffle(sp.map((_,i)=>i)).slice(0,data.impostors));
   const roles={};
   sp.forEach((name,i)=>{ roles[name]={isImpostor:impSet.has(i),word:impSet.has(i)?null:word,category:cat,impostors:data.impostors,total:joined.length}; });
-  await dbPatch(_hostCode,{status:'started',roles});
+  await fetch(`${FB_URL}/games/${code}/status.json`, {
+  method:"PUT",
+  body: JSON.stringify("started")
+});
+
+fetch(`${FB_URL}/games/${code}/roles.json`, {
+  method:"PUT",
+  body: JSON.stringify(roles)
+});
   stopPoll();
   lsDel('HOST');
   $('resume-wrap').style.display='none';
