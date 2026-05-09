@@ -504,15 +504,17 @@ async function selectHostName(name){
   const cat=_cat==='Random'?catKeys[0|Math.random()*catKeys.length]:_cat;
   _hostCode=genCode();
 
-  const ok=await fetch(`${FB_URL}/games/${code}/players.json`, {
-  method:"PUT",
-  body: JSON.stringify(players)
-});
+  const gameData = {
+  host: _hostName,
+  players: _players,
+  joined: { [_hostName]: true },
+  category: cat,
+  imposters: _nImp,
+  status: 'lobby',
+  roles: null
+};
 
-fetch(`${FB_URL}/games/${code}/joined.json`, {
-  method:"PUT",
-  body: JSON.stringify({[hostName]:true})
-});
+const ok = await dbSet(_hostCode, gameData);
 
   if(!ok){
     $('host-name-list').innerHTML=`<div style="color:#FF2441;text-align:center;padding:16px">Error — tap to try again</div>`;
