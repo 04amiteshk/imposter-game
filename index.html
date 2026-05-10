@@ -556,29 +556,39 @@ async function rejoinGame(){
 }
 
 async function pollLobby(code){
-  const data=await dbGet(code);
-  if(!data)return;
-  const all=data.players||[], joined=data.joined||{};
-  const joinedNames=Object.keys(joined), n=joinedNames.length;
-  $('lobby-count-lbl').textContent=`Players joined · ${n} / ${all.length}`;
-  $('lobby-players').innerHTML=all.map(p=>{
-    const in_=joinedNames.includes(p);
-    return`<div class="prow">
-      <div class="av">${esc(p[0].toUpperCase())}</div>
-      <div style="flex:1;font-weight:500;font-size:15px">${esc(p)}</div>
-      <div class="${in_?'dot-on':'dot-off'}"></div>
-      <div style="font-size:13px;color:${in_?'#00C264':'#2a2a2a'};margin-left:6px">${in_?'Joined':'Waiting'}</div>
-    </div>`;
-  }).join('');
-  const joinedCount = Object.keys(data.joined || {}).length;
+  const data = await dbGet(code);
+  if(!data) return;
 
-if(joinedCount >= 3){
-  $('start-btn').className = 'btn';
-  $('start-btn').textContent = 'Start Game';
-} else {
-  $('start-btn').className = 'btn off';
-  $('start-btn').textContent = `Waiting for players…`;
-}
+  const players = data.players || [];
+  const joined = data.joined || {};
+
+  // render player list
+  $('lobby-players').innerHTML = players.map(p => `
+    <div class="prow">
+      <div class="av">${esc(p[0].toUpperCase())}</div>
+      <div style="flex:1">${esc(p)}</div>
+      <div class="${joined[p] ? 'dot-on' : 'dot-off'}"></div>
+    </div>
+  `).join('');
+
+  // update count label
+  const joinedCount = Object.keys(joined).length;
+  $('lobby-count-lbl').textContent = `${joinedCount} / ${players.length} players joined`;
+
+  // enable / disable start button
+  if(joinedCount >= 3){
+    $('start-btn').className = 'btn';
+    $('start-btn').textContent = 'Start Game';
+  } else {
+    $('start-btn').className = 'btn off';
+    $('start-btn').textContent = 'Waiting for players…';
+  }
+
+  // 🔥 IMPORTANT: detect game start
+  if(data.status === 'started'){
+    stopPoll();
+    go('card');
+  }
 }
 
 async function startGame() {
@@ -820,6 +830,183 @@ function flipCard(){
 }
 
 /* ════════ START ═════════════════════════════════════════ */
+boot();
+<script>
+/* ═════════════ WORD BANKS ═════════════ */
+const BANKS = {
+  Places: ['Beach','Airport','Library','Hospital','Casino','Museum','School','Restaurant','Stadium','Bank','Gym','Church','Prison','Zoo','Theme Park','Submarine','Space Station','Haunted House','Pirate Ship','Circus','Ski Resort','Cruise Ship','Jungle','Desert Island','Courtroom'],
+  Food: ['Pizza','Sushi','Tacos','Burger','Ramen','Pasta','Steak','Curry','Pancakes','Nachos','Cheesecake','Boba Tea','Hot Dog','Dim Sum','Croissant','Burrito','Pho','Gyoza','Churro','Tiramisu'],
+  Animals: ['Dolphin','Eagle','Elephant','Shark','Cheetah','Gorilla','Penguin','Tiger','Wolf','Octopus','Flamingo','Kangaroo','Polar Bear','Sloth','Peacock','Axolotl','Narwhal','Orca','Red Panda'],
+  Movies: ['Titanic','Avatar','Inception','Joker','Interstellar','Matrix','Parasite','Dune','Oppenheimer','Barbie','Jaws','Godfather','Get Out','Knives Out'],
+  Sports: ['Soccer','Basketball','Tennis','Swimming','Boxing','Golf','Baseball','Volleyball','Skiing','Surfing','Cycling','Fencing'],
+  Jobs: ['Doctor','Pilot','Chef','Teacher','Astronaut','Firefighter','Detective','Lawyer','Artist','Spy','DJ','Bouncer','Taxidermist']
+};
+
+/* ═════════════ STATE SHAPE (IMPORTANT) ═════════════ */
+const createRole = (role, word, category, imposters) => ({
+  role,                 // "crew" | "imposter"
+  word: role === 'crew' ? word : null,
+  category,
+  imposters
+});
+
+const $ = id => document.getElementById(id);
+const genCode = () => Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random()*24|0]).join('');
+const pick = a => a[Math.random()*a.length|0];
+const shuffle = a => [...a].sort(()=>Math.random()-0.5);
+
+/* ═════════════ DB LAYER ═════════════ */
+let USE_WS = false;
+const FB_URL = 'https://imposter-game-8pc-default-rtdb.firebaseio.com';
+
+async function dbGet(code){
+  if(USE_WS){
+    try { const r = await window.storage.get('game:'+code,true); return r?JSON.parse(r.value):null; } catch { return null; }
+  }
+  try {
+    const r = await fetch(`${FB_URL}/games/${code}.json`);
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+async function dbSet(code, data){
+  try {
+    await fetch(`${FB_URL}/games/${code}.json`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    return true;
+  } catch { return false; }
+}
+
+async function dbPatch(code, patch){
+  try {
+    await fetch(`${FB_URL}/games/${code}.json`, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(patch)
+    });
+    return true;
+  } catch { return false; }
+}
+
+/* ═════════════ POLLING ═════════════ */
+let pollId=null;
+const startPoll=(fn,ms=2000)=>{stopPoll();fn();pollId=setInterval(fn,ms)};
+const stopPoll=()=>pollId&&clearInterval(pollId);
+
+/* ═════════════ NAV ═════════════ */
+function go(id){
+  stopPoll();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $('s-'+id).classList.add('on');
+  window.scrollTo(0,0);
+}
+
+/* ═════════════ HOST GAME CREATE ═════════════ */
+let HOST_CODE=null;
+
+async function startGame(){
+  const data = await dbGet(HOST_CODE);
+  if(!data) return;
+
+  const players = data.players || [];
+  if(players.length < 3) return;
+
+  const category = data.category;
+  const word = pick(BANKS[category] || BANKS.Places);
+  const imposters = Math.min(data.imposters || 1, players.length-1);
+
+  const shuffled = shuffle(players);
+
+  const roles = {};
+  shuffled.forEach((p,i)=>{
+    roles[p] = createRole(
+      i < imposters ? 'imposter' : 'crew',
+      word,
+      category,
+      imposters
+    );
+  });
+
+  await dbPatch(HOST_CODE,{
+    status:'started',
+    roles
+  });
+}
+
+/* ═════════════ LOBBY FIX (HOST SAFETY) ═════════════ */
+async function pollLobby(code){
+  const data = await dbGet(code);
+  if(!data) return;
+
+  const joined = data.joined || {};
+  const players = data.players || [];
+
+  if(data.status === 'started'){
+    stopPoll();
+    go('invalid'); // host should NOT see card screen
+    return;
+  }
+}
+
+/* ═════════════ PLAYER JOIN SAFETY FIX ═════════════ */
+async function confirmName(){
+  const name = _pendingMatch;
+  const code = _playerCode;
+
+  const fresh = await dbGet(code);
+  if(!fresh || fresh.status !== 'lobby') return;
+
+  // atomic-safe join check
+  if(fresh.joined?.[name]){
+    alert("Name already taken");
+    return;
+  }
+
+  await fetch(`${FB_URL}/games/${code}/joined/${encodeURIComponent(name)}.json`,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:'true'
+  });
+
+  lsSet('PCODE',code);
+  lsSet('PNAME_'+code,name);
+
+  startWaiting(code,name,fresh);
+}
+
+/* ═════════════ ROLE RENDER FIX ═════════════ */
+function showRoleCard(name, role){
+  const isImposter = role.role === 'imposter';
+
+  $('card-name').textContent = name;
+
+  const back = $('card-back');
+
+  back.classList.remove('face-crew','face-imp');
+  back.classList.add(isImposter ? 'face-imp' : 'face-crew');
+
+  if(isImposter){
+    $('c-icon').textContent = '🕵️';
+    $('c-word').textContent = 'IMPOSTER';
+    $('c-hint').textContent = "You don't know the word.";
+  } else {
+    $('c-icon').textContent = '💬';
+    $('c-word').textContent = role.word;
+    $('c-hint').textContent = "Give clues to your team.";
+  }
+
+  go('card');
+}
+
+/* ═════════════ STARTUP ═════════════ */
+async function boot(){
+  try { await window.storage.get('__ping__',true); USE_WS=true; } catch {}
+  go('home');
+}
+
 boot();
 </script>
 </body>
