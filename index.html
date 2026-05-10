@@ -9,36 +9,65 @@
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
 body{
   background:#09090F;
   color:#fff;
   font-family:'DM Sans',sans-serif;
-  overscroll-behavior:none;
   -webkit-font-smoothing:antialiased;
 }
 
-.screen{display:none;min-height:100svh;max-width:440px;margin:0 auto;flex-direction:column}
+.screen{display:none;min-height:100vh;max-width:440px;margin:0 auto;flex-direction:column}
 .screen.on{display:flex}
 
-.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.center{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px}
 .pad{flex:1;display:flex;flex-direction:column;padding:24px}
 
-.title{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:4px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:4px}
 
-.btn{background:#FF2441;color:#fff;border:none;border-radius:14px;padding:14px;font-weight:600;width:100%}
-.btn2{background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:14px;width:100%}
-.btn.off{opacity:.4;pointer-events:none}
+.btn{
+  background:#FF2441;
+  border:none;
+  color:#fff;
+  padding:14px;
+  border-radius:12px;
+  font-weight:700;
+  cursor:pointer;
+  width:100%;
+}
 
-.inp{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff}
+.btn2{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  color:#fff;
+  padding:14px;
+  border-radius:12px;
+  width:100%;
+}
+
+.inp{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.05);
+  color:#fff;
+  outline:none;
+}
 
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .tag{background:rgba(255,255,255,0.07);padding:6px 10px;border-radius:999px;font-size:13px}
 
-.card{background:linear-gradient(150deg,#14141f,#0c0c16);border-radius:16px;padding:20px;text-align:center}
-.code{font-family:'Bebas Neue';font-size:42px;letter-spacing:3px}
+.card{
+  background:linear-gradient(150deg,#14141f,#0c0c16);
+  border-radius:16px;
+  padding:20px;
+  text-align:center;
+}
+
+.code{font-family:'Bebas Neue';font-size:44px;letter-spacing:4px}
 </style>
 </head>
+
 <body>
 
 <!-- HOME -->
@@ -57,13 +86,17 @@ body{
     <h2 style="margin:20px 0">Setup</h2>
 
     <div style="display:flex;gap:10px">
-      <input id="p" class="inp" placeholder="Player name" onkeydown="if(event.key==='Enter')addPlayer()" />
+      <input id="p" class="inp" placeholder="Player name"
+        onkeydown="if(event.key==='Enter')addPlayer()" />
       <button class="btn" onclick="addPlayer()">+</button>
     </div>
 
     <div id="tags" class="tags"></div>
 
-    <button id="create" class="btn off" onclick="createGame()" style="margin-top:auto">Create Game</button>
+    <button id="createBtn" class="btn" style="margin-top:auto;opacity:.4"
+      onclick="createGame()">
+      Create Game
+    </button>
   </div>
 </div>
 
@@ -105,7 +138,7 @@ body{
   </div>
 </div>
 
-<!-- ================= FIREBASE COMPAT (GITHUB SAFE) ================= -->
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
@@ -123,104 +156,139 @@ let players = [];
 let code = null;
 let me = null;
 
+/* ================= SAFE NAV ================= */
 function go(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   const el = document.getElementById(id);
-  if(el) el.classList.add('on');
+  if(!el){
+    console.error("Screen not found:", id);
+    return;
+  }
+  el.classList.add('on');
 }
 
+/* ================= PLAYER SYSTEM ================= */
 function addPlayer(){
   const v = document.getElementById('p').value.trim();
   if(!v) return;
+
   players.push(v);
-  document.getElementById('p').value='';
+  document.getElementById('p').value = "";
   render();
 }
 
 function render(){
-  document.getElementById('tags').innerHTML = players.map(p=>`<div class='tag'>${p}</div>`).join('');
-  document.getElementById('create').classList.toggle('off', players.length<3);
+  document.getElementById('tags').innerHTML =
+    players.map(p=>`<div class='tag'>${p}</div>`).join('');
+
+  const btn = document.getElementById('createBtn');
+
+  if(players.length >= 3){
+    btn.style.opacity = "1";
+    btn.disabled = false;
+  } else {
+    btn.style.opacity = ".4";
+    btn.disabled = true;
+  }
 }
 
+/* ================= HOST GAME ================= */
 async function createGame(){
-  code = Math.random().toString(36).substring(2,8).toUpperCase();
-
-  await db.ref('games/'+code).set({
-    players,
-    joined:{},
-    status:'lobby',
-    roles:{},
-    imposters:1
-  });
-
-  document.getElementById('code').innerText = code;
-  go('lobby');
-
-  db.ref('games/'+code).on('value', snap=>{
-    const d = snap.val();
-    if(!d) return;
-
-    document.getElementById('players').innerHTML = (d.players||[])
-      .map(p=>`<div>${p} ${d.joined?.[p]?'✓':''}</div>`).join('');
-
-    if(d.status==='started' && me){
-      const r = d.roles?.[me];
-      if(!r) return;
-
-      document.getElementById('rname').innerText = me;
-      document.getElementById('roleText').innerText = r.role;
-      document.getElementById('word').innerText = r.word || 'IMPOSTER';
-      go('role');
+  try {
+    if(players.length < 3){
+      alert("Need at least 3 players");
+      return;
     }
-  });
+
+    code = Math.random().toString(36).substring(2,8).toUpperCase();
+
+    await db.ref("games/" + code).set({
+      players,
+      joined:{},
+      status:"lobby",
+      roles:{},
+      imposters:1
+    });
+
+    document.getElementById("code").innerText = code;
+    go("lobby");
+
+    db.ref("games/" + code).on("value", snap=>{
+      const d = snap.val();
+      if(!d) return;
+
+      document.getElementById("players").innerHTML =
+        (d.players||[]).map(p=>`<div>${p} ${d.joined?.[p]?"✓":""}</div>`).join("");
+    });
+
+  } catch(err){
+    console.error("CREATE GAME ERROR:", err);
+    alert("Failed to create game. Check console.");
+  }
 }
 
+/* ================= JOIN ================= */
 async function joinGame(){
-  const c = document.getElementById('codeIn').value.toUpperCase();
-  const n = document.getElementById('nameIn').value.trim();
+  try {
+    const c = document.getElementById("codeIn").value.toUpperCase();
+    const n = document.getElementById("nameIn").value.trim();
 
-  me = n;
-  code = c;
+    if(!c || !n) return alert("Enter code + name");
 
-  const snap = await db.ref('games/'+c).get();
-  if(!snap.exists()) return alert('Game not found');
+    me = n;
+    code = c;
 
-  await db.ref('games/'+c+'/joined').update({[n]:true});
+    const snap = await db.ref("games/"+c).get();
+    if(!snap.exists()) return alert("Game not found");
 
-  db.ref('games/'+c).on('value', snap=>{
-    const d = snap.val();
-    if(d?.status==='started' && d.roles?.[n]){
-      const r = d.roles[n];
+    await db.ref("games/"+c+"/joined").update({[n]:true});
 
-      document.getElementById('rname').innerText = n;
-      document.getElementById('roleText').innerText = r.role;
-      document.getElementById('word').innerText = r.word || 'IMPOSTER';
-      go('role');
-    }
-  });
+    db.ref("games/"+c).on("value", snap=>{
+      const d = snap.val();
+      if(d?.status==="started" && d.roles?.[n]){
+        const r = d.roles[n];
 
-  go('role');
+        document.getElementById("rname").innerText = n;
+        document.getElementById("roleText").innerText = r.role;
+        document.getElementById("word").innerText = r.word || "IMPOSTER";
+        go("role");
+      }
+    });
+
+    go("role");
+
+  } catch(err){
+    console.error("JOIN ERROR:", err);
+  }
 }
 
+/* ================= START GAME ================= */
 async function startGame(){
-  const snap = await db.ref('games/'+code).get();
-  const d = snap.val();
+  try {
+    const snap = await db.ref("games/"+code).get();
+    const d = snap.val();
 
-  const shuffled = [...d.players].sort(()=>Math.random()-0.5);
-  const roles = {};
+    const shuffled = [...d.players].sort(()=>Math.random()-0.5);
+    const roles = {};
 
-  shuffled.forEach((p,i)=>{
-    roles[p] = {
-      role: i<d.imposters ? 'imposter':'crew',
-      word: 'WORD'
-    };
-  });
+    shuffled.forEach((p,i)=>{
+      roles[p] = {
+        role: i<d.imposters ? "imposter":"crew",
+        word: "WORD"
+      };
+    });
 
-  await db.ref('games/'+code).update({
-    roles,
-    status:'started'
-  });
+    await db.ref("games/"+code).update({
+      roles,
+      status:"started"
+    });
+
+  } catch(err){
+    console.error("START GAME ERROR:", err);
+  }
 }
+
+console.log("READY");
 </script>
 
 </body>
