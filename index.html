@@ -16,10 +16,14 @@ body{margin:0;font-family:DM Sans;background:#0b0b12;color:#fff}
 .title{font-family:'Bebas Neue';font-size:54px;color:#ff2441;letter-spacing:3px}
 .btn{padding:14px;border:0;border-radius:12px;background:#ff2441;color:#fff;width:100%;font-weight:600;margin-top:10px}
 .btn2{padding:12px;border-radius:12px;background:#222;color:#fff;border:1px solid #333;width:100%}
-.inp{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff}
-select{width:100%;padding:12px;border-radius:10px;background:#111;color:#fff;border:1px solid #333}
-.card{background:#151520;padding:20px;border-radius:16px;text-align:center}
-.small{opacity:.6;font-size:13px}
+.inp,select{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #333;
+  background:#111;
+  color:#fff;
+}
 </style>
 </head>
 
@@ -29,8 +33,17 @@ select{width:100%;padding:12px;border-radius:10px;background:#111;color:#fff;bor
 <div id="home" class="screen on">
   <div class="center">
     <div class="title">IMPOSTER</div>
-    <button class="btn" onclick="createGame()">Host Game</button>
+    <button class="btn" onclick="go('host')">Host Game</button>
     <button class="btn2" onclick="go('join')">Join Game</button>
+  </div>
+</div>
+
+<!-- HOST -->
+<div id="host" class="screen">
+  <div class="center">
+    <input id="hostName" class="inp" placeholder="Enter YOUR name first"/>
+    <input id="playerList" class="inp" placeholder="Player names (comma separated)"/>
+    <button class="btn" onclick="createGame()">Create Game</button>
   </div>
 </div>
 
@@ -38,17 +51,16 @@ select{width:100%;padding:12px;border-radius:10px;background:#111;color:#fff;bor
 <div id="join" class="screen">
   <div class="center">
     <input id="codeInput" class="inp" placeholder="Game Code"/>
-    <button class="btn" onclick="findGame()">Find Game</button>
-    <button class="btn2" onclick="go('home')">Back</button>
+    <button class="btn" onclick="loadGame()">Find Game</button>
   </div>
 </div>
 
-<!-- NAME SELECT -->
-<div id="name" class="screen">
+<!-- PICK NAME -->
+<div id="pick" class="screen">
   <div class="center">
-    <div class="small">Select your name</div>
+    <div>Select your name</div>
     <select id="nameSelect"></select>
-    <button class="btn" onclick="joinGame()">Join</button>
+    <button class="btn" onclick="joinAsPlayer()">Join Game</button>
   </div>
 </div>
 
@@ -65,10 +77,7 @@ select{width:100%;padding:12px;border-radius:10px;background:#111;color:#fff;bor
 <!-- GAME -->
 <div id="game" class="screen">
   <div class="center">
-    <div class="card">
-      <div id="role"></div>
-      <div id="word"></div>
-    </div>
+    <h2 id="role"></h2>
   </div>
 </div>
 
@@ -83,7 +92,6 @@ import {
   onValue
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* ---------------- CONFIG ---------------- */
 const firebaseConfig = {
   databaseURL: "YOUR_REAL_FIREBASE_DB_URL"
 };
@@ -91,12 +99,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- STATE ---------------- */
 let CODE = null;
 let NAME = null;
-let isHost = false;
+let IS_HOST = false;
 
-/* ---------------- HELPERS ---------------- */
 const $ = id => document.getElementById(id);
 
 function go(id){
@@ -108,87 +114,112 @@ function genCode(){
   return Math.random().toString(36).substring(2,8).toUpperCase();
 }
 
-/* ---------------- CREATE GAME (HOST AUTO JOINS) ---------------- */
+/* ================= HOST CREATES GAME ================= */
 async function createGame(){
-  CODE = genCode();
-  isHost = true;
-  NAME = "Host";
+  const hostName = $("hostName").value.trim();
+  if(!hostName) return alert("Enter your name");
 
-  const players = ["Host","Player 1","Player 2","Player 3"];
+  const list = $("playerList").value
+    .split(",")
+    .map(n => n.trim())
+    .filter(Boolean);
+
+  CODE = genCode();
+  NAME = hostName;
+  IS_HOST = true;
+
+  const players = [
+    { name: hostName, taken: true },
+    ...list.map(n => ({ name:n, taken:false }))
+  ];
 
   await set(ref(db,"games/"+CODE),{
     players,
-    joined:{Host:true},
+    host: hostName,
+    joined: { [hostName]: true },
     status:"lobby"
   });
 
   go('lobby');
   $("codeBox").innerText = CODE;
 
-  listenGame();
+  listen();
 }
 
-/* ---------------- FIND GAME ---------------- */
-async function findGame(){
+/* ================= LOAD GAME ================= */
+async function loadGame(){
   const code = $("codeInput").value.toUpperCase();
   const snap = await get(ref(db,"games/"+code));
 
-  if(!snap.exists()){
-    alert("Game not found");
-    return;
-  }
+  if(!snap.exists()) return alert("Game not found");
 
   CODE = code;
-  go('name');
+  go('pick');
 
   const data = snap.val();
+
   const select = $("nameSelect");
   select.innerHTML = "";
 
   data.players.forEach(p=>{
-    const opt = document.createElement("option");
-    opt.value = p;
-    opt.innerText = p;
-    select.appendChild(opt);
+    if(!p.taken){
+      const opt = document.createElement("option");
+      opt.value = p.name;
+      opt.innerText = p.name;
+      select.appendChild(opt);
+    }
   });
 }
 
-/* ---------------- JOIN GAME ---------------- */
-async function joinGame(){
+/* ================= JOIN PLAYER ================= */
+async function joinAsPlayer(){
   NAME = $("nameSelect").value;
 
-  await update(ref(db,"games/"+CODE+"/joined"),{
-    [NAME]:true
+  const snap = await get(ref(db,"games/"+CODE));
+  const game = snap.val();
+
+  const updatedPlayers = game.players.map(p=>{
+    if(p.name === NAME){
+      return {...p, taken:true};
+    }
+    return p;
+  });
+
+  await update(ref(db,"games/"+CODE),{
+    players: updatedPlayers,
+    [`joined/${NAME}`]: true
   });
 
   go('lobby');
-  listenGame();
+  listen();
 }
 
-/* ---------------- LOBBY LISTENER ---------------- */
-function listenGame(){
+/* ================= LOBBY LISTENER ================= */
+function listen(){
   onValue(ref(db,"games/"+CODE),(snap)=>{
     const data = snap.val();
     if(!data) return;
 
     $("players").innerHTML =
       data.players.map(p =>
-        `<div>${p} ${data.joined?.[p] ? "✔️" : "⏳"}</div>`
+        `<div>${p.name} ${p.taken ? "✔️" : "⏳"}</div>`
       ).join("");
   });
 }
 
-/* ---------------- START GAME ---------------- */
+/* ================= START GAME ================= */
 async function startGame(){
   const snap = await get(ref(db,"games/"+CODE));
-  const data = snap.val();
+  const game = snap.val();
 
-  const shuffled = [...data.players].sort(()=>Math.random()-0.5);
+  const names = game.players.map(p=>p.name);
+  const shuffled = [...names].sort(()=>Math.random()-0.5);
+
   const roles = {};
   const imposter = shuffled[0];
 
-  shuffled.forEach(p=>{
-    roles[p] = p === imposter ? "IMPOSTER" : "WORD: Banana";
+  shuffled.forEach(n=>{
+    roles[n] = (n === imposter) ? "IMPOSTER" : "WORD: Banana";
   });
 
   await update(ref(db,"games/"+CODE),{
@@ -199,25 +230,25 @@ async function startGame(){
   showGame();
 }
 
-/* ---------------- SHOW GAME ---------------- */
+/* ================= GAME ================= */
 function showGame(){
   onValue(ref(db,"games/"+CODE),(snap)=>{
     const data = snap.val();
     if(!data?.roles) return;
 
     go('game');
-
     $("role").innerText = data.roles[NAME];
   });
 }
 
 /* expose */
-window.createGame = createGame;
-window.findGame = findGame;
-window.joinGame = joinGame;
-window.startGame = startGame;
 window.go = go;
+window.createGame = createGame;
+window.loadGame = loadGame;
+window.joinAsPlayer = joinAsPlayer;
+window.startGame = startGame;
 
 </script>
+
 </body>
 </html>
