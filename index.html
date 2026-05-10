@@ -352,18 +352,28 @@ async function dbSet(code, data) {
 }
 
 async function dbPatch(code, patch) {
-  if(USE_WS) {
-    try {
-      const current = await dbGet(code) || {};
-      const merged  = deepMerge(current, patch);
+  try {
+    // Always fetch latest data first
+    const current = await dbGet(code) || {};
+
+    // Deep merge so nested objects like `joined`
+    // do not overwrite existing players
+    const merged = deepMerge(current, patch);
+
+    if(USE_WS) {
       await window.storage.set('game:'+code, JSON.stringify(merged), true);
-      return true;
-    } catch{ return false; }
-  } else {
-    try {
-      await fetch(`${FB_URL}/games/${code}.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
-      return true;
-    } catch{ return false; }
+    } else {
+      // Use PUT with fully merged object
+      await fetch(`${FB_URL}/games/${code}.json`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(merged)
+      });
+    }
+
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -721,14 +731,11 @@ async function confirmName(){
     $('name-feedback').innerHTML=`<div style="color:#FF2441;font-size:14px;margin-top:4px">⚠️ Someone just took that name. Try again.</div>`;
     _pendingMatch=null;$('join-btn').className='btn off';$('join-btn').textContent='Type your name first';return;
   }
-  await fetch(
-  `${FB_URL}/games/${code}/joined/${encodeURIComponent(name)}.json`,
-  {
-    method: 'PUT',
-    headers: {'Content-Type':'application/json'},
-    body: 'true'
-  }
-);
+  const latest = await dbGet(code) || {};
+  const joined = latest.joined || {};
+  joined[name] = true;
+
+  await dbPatch(code,{joined});
   lsSet('PCODE',code); lsSet('PNAME_'+code,name);
   _myName=name;
   startWaiting(code,name,fresh);
