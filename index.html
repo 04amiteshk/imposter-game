@@ -1,135 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>IMPOSTER</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
 <style>
-body{margin:0;font-family:DM Sans;background:#0b0b12;color:#fff}
-.screen{display:none;min-height:100vh;max-width:420px;margin:0 auto;flex-direction:column}
-.screen.on{display:flex}
-.center{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px}
-.title{font-family:'Bebas Neue';font-size:54px;color:#ff2441}
-.btn{padding:14px;border:0;border-radius:12px;background:#ff2441;color:#fff;width:100%;font-weight:600;margin-top:10px}
-.btn2{padding:12px;border-radius:12px;background:#222;color:#fff;border:1px solid #333;width:100%}
-.inp{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff}
-#debug{font-size:12px;color:#ff8080;margin-top:10px;white-space:pre-wrap}
+body{margin:0;font-family:sans-serif;background:#0b0b12;color:#fff}
+.center{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+button{padding:14px;border:0;border-radius:10px;background:#ff2441;color:#fff;font-weight:700;width:200px}
+input{padding:10px;margin:6px;border-radius:8px;border:1px solid #333;background:#111;color:#fff}
+#debug{color:yellow;margin-top:10px;font-size:12px;white-space:pre-wrap}
 </style>
 </head>
 
 <body>
 
-<!-- HOME -->
-<div id="home" class="screen on">
-  <div class="center">
-    <div class="title">IMPOSTER</div>
+<div class="center">
+  <h1>IMPOSTER</h1>
 
-    <button class="btn" onclick="createGame()">Host Game</button>
-    <button class="btn2" onclick="go('host')">Go to Host Setup</button>
+  <input id="hostName" placeholder="Host name"/>
+  <input id="players" placeholder="Alice, Bob, Charlie"/>
 
-    <div id="debug"></div>
-  </div>
+  <button onclick="createGame()">HOST GAME</button>
+
+  <div id="debug"></div>
 </div>
 
-<!-- HOST SETUP -->
-<div id="host" class="screen">
-  <div class="center">
-    <input id="hostName" class="inp" placeholder="Your name"/>
-    <input id="playerList" class="inp" placeholder="Player1, Player2, Player3"/>
-    <button class="btn" onclick="createGame()">Create Game</button>
-    <button class="btn2" onclick="go('home')">Back</button>
-  </div>
-</div>
+<!-- FIREBASE COMPAT (IMPORTANT FIX) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getDatabase,
-  ref,
-  set
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
+<script>
 /* ================= FIREBASE ================= */
 const firebaseConfig = {
   databaseURL: "YOUR_REAL_FIREBASE_DB_URL"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-/* ================= STATE ================= */
-let CODE = null;
-
-/* ================= UTIL ================= */
-const $ = id => document.getElementById(id);
-
+/* ================= DEBUG ================= */
 function log(msg){
-  $("debug").innerText += "\n" + msg;
+  document.getElementById("debug").innerText += "\n" + msg;
 }
 
-function go(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
-  $(id).classList.add('on');
-}
-
-function genCode(){
-  return Math.random().toString(36).substring(2,8).toUpperCase();
-}
-
-/* ================= CRITICAL FIXED FUNCTION ================= */
-window.createGame = async function createGame(){
-
+/* ================= HOST GAME ================= */
+async function createGame(){
   try {
-    log("createGame() triggered");
+    log("Button clicked");
 
-    const hostName = $("hostName")?.value?.trim();
-    const listRaw = $("playerList")?.value;
-
-    if(!hostName){
-      alert("Enter host name first");
+    const host = document.getElementById("hostName").value.trim();
+    if(!host){
+      alert("Enter host name");
       return;
     }
 
-    const list = (listRaw || "")
-      .split(",")
-      .map(x=>x.trim())
-      .filter(Boolean);
+    const raw = document.getElementById("players").value;
+    const players = raw.split(",").map(x=>x.trim()).filter(Boolean);
 
-    CODE = genCode();
+    const code = Math.random().toString(36).substring(2,7).toUpperCase();
 
-    const players = [
-      { name: hostName, taken: true },
-      ...list.map(n => ({ name:n, taken:false }))
-    ];
+    log("Creating game: " + code);
 
-    log("Writing to Firebase...");
-
-    await set(ref(db,"games/"+CODE),{
-      players,
-      host: hostName,
-      joined: { [hostName]: true },
-      status:"lobby"
+    await db.ref("games/" + code).set({
+      host,
+      players: [
+        {name:host,taken:true},
+        ...players.map(p=>({name:p,taken:false}))
+      ],
+      status:"lobby",
+      joined:{[host]:true}
     });
 
-    log("Game created: " + CODE);
+    alert("Game created: " + code);
 
-    alert("Game created: " + CODE);
-
-  go('home');
-
-  } catch (err) {
-    console.error(err);
-    log("ERROR: " + err.message);
-    alert("Firebase error — check console");
+  } catch (e) {
+    console.log(e);
+    log("ERROR: " + e.message);
   }
 }
-
-/* ================= NAV ================= */
-window.go = go;
-
 </script>
 
 </body>
