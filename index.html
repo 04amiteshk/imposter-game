@@ -1,84 +1,812 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>IMPOSTER</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>IMPOSTER · Party Word Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-body{margin:0;font-family:sans-serif;background:#0b0b12;color:#fff}
-.center{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
-button{padding:14px;border:0;border-radius:10px;background:#ff2441;color:#fff;font-weight:700;width:200px}
-input{padding:10px;margin:6px;border-radius:8px;border:1px solid #333;background:#111;color:#fff}
-#debug{color:yellow;margin-top:10px;font-size:12px;white-space:pre-wrap}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#09090F;color:#fff;font-family:'DM Sans',sans-serif;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+.screen{display:none;min-height:100svh;flex-direction:column;max-width:440px;margin:0 auto}
+.screen.on{display:flex}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px}
+.pad{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column}
+.lbl{font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#3a3a3a;margin-bottom:12px}
+.title{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:4px;margin-bottom:28px}
+.sec{margin-bottom:28px}
+.btn{background:#FF2441;color:#fff;border:none;border-radius:14px;padding:16px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;width:100%;transition:background .15s,transform .1s}
+.btn:active{background:#c9001f;transform:scale(.98)}
+.btn.off{background:rgba(255,255,255,0.05);color:#2a2a2a;pointer-events:none}
+.btn2{background:rgba(255,255,255,0.05);color:#fff;border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:14px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;width:100%}
+.btn2:active{background:rgba(255,255,255,0.1)}
+.back{background:none;border:none;color:#444;font-size:26px;cursor:pointer;padding:0 0 8px;display:block}
+.inp{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:13px 16px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;width:100%;transition:border-color .2s}
+.inp:focus{border-color:rgba(255,36,65,.45)}
+.inp::placeholder{color:#2a2a2a}
+.inp.ok{border-color:rgba(0,194,100,.45)}
+.inp.err{border-color:rgba(255,36,65,.5)}
+.row-add{display:flex;gap:10px}
+.row-add .inp{flex:1;width:auto}
+.add-btn{background:#FF2441;border:none;border-radius:12px;width:48px;height:48px;font-size:26px;color:#fff;cursor:pointer;flex-shrink:0}
+.add-btn:active{background:#c9001f}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.09);border-radius:100px;padding:6px 10px 6px 14px;font-size:14px;display:flex;align-items:center;gap:8px;animation:popIn .2s ease}
+.rm{background:none;border:none;color:#333;cursor:pointer;font-size:18px;line-height:1;padding:0}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.07);border-radius:14px;padding:12px 10px;color:#777;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .2s}
+.cat.on{background:rgba(255,36,65,.1);border-color:#FF2441;color:#FF2441}
+.cat .ico{font-size:20px}
+.cnts{display:flex;gap:10px}
+.cnt{width:54px;height:54px;border-radius:14px;background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.08);color:#666;font-size:22px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.cnt.on{background:rgba(255,36,65,.1);border-color:#FF2441;color:#FF2441}
+.cnt:disabled{opacity:.2;pointer-events:none}
+.prow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.prow:last-child{border-bottom:none}
+.av{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.dot-on{width:8px;height:8px;border-radius:50%;background:#00C264;box-shadow:0 0 6px rgba(0,194,100,.5);flex-shrink:0}
+.dot-off{width:8px;height:8px;border-radius:50%;background:#252525;flex-shrink:0}
+.code-box{background:rgba(255,36,65,.08);border:1.5px solid rgba(255,36,65,.25);border-radius:16px;padding:16px 20px;text-align:center;margin-bottom:16px}
+.code-big{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:8px;color:#FF2441;line-height:1}
+.link-row{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;margin-bottom:16px}
+.link-txt{flex:1;font-size:12px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace}
+.copy-btn{background:#FF2441;border:none;border-radius:8px;padding:7px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0}
+.suggestion{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 18px;cursor:pointer;transition:background .15s}
+.suggestion:active{background:rgba(255,255,255,0.1)}
+.suggestion.picked{background:rgba(0,194,100,.07);border-color:rgba(0,194,100,.3)}
+.pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:100px;padding:5px 13px;font-size:13px;color:#555}
+.card-scene{perspective:700px;width:100%}
+.card{position:relative;width:100%;height:256px;transform-style:preserve-3d;transition:transform .65s cubic-bezier(.4,0,.2,1)}
+.card.flipped{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center}
+.face-f{background:linear-gradient(150deg,#14141f,#0c0c16);border:1px solid rgba(255,255,255,0.06);cursor:pointer}
+.face-b{transform:rotateY(180deg)}
+.face-imp{background:linear-gradient(150deg,#1f0808,#110404);border:2px solid #FF2441;box-shadow:0 0 40px rgba(255,36,65,.12)}
+.face-crew{background:linear-gradient(150deg,#071726,#040e1b);border:2px solid #00C2FF;box-shadow:0 0 40px rgba(0,194,255,.1)}
+.info-box{width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:16px;font-size:13px;color:#3a3a3a;line-height:1.9}
+.step{display:flex;gap:14px;margin-bottom:18px;align-items:flex-start}
+.step-n{width:26px;height:26px;border-radius:50%;background:#FF2441;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step p{font-size:14px;color:#555;line-height:1.7}
+.step code{font-size:11px;color:#FF2441;background:rgba(255,36,65,.08);padding:2px 7px;border-radius:5px;word-break:break-all}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:32px;height:32px;border:2.5px solid rgba(255,255,255,0.08);border-top-color:#FF2441;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .3s ease both}
+@keyframes popIn{from{opacity:0;transform:scale(.87)}to{opacity:1;transform:scale(1)}}
 </style>
 </head>
-
 <body>
 
-<div class="center">
-  <h1>IMPOSTER</h1>
-
-  <input id="hostName" placeholder="Host name"/>
-  <input id="players" placeholder="Alice, Bob, Charlie"/>
-
-  <button onclick="createGame()">HOST GAME</button>
-
-  <div id="debug"></div>
+<!-- ══ HOME ══════════════════════════════════════════════ -->
+<div id="s-home" class="screen">
+  <div class="center fu" style="gap:0">
+    <div style="text-align:center;margin-bottom:40px">
+      <div style="font-size:70px;line-height:1;margin-bottom:14px;filter:drop-shadow(0 0 20px rgba(255,36,65,.3))">🕵️</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:86px;letter-spacing:8px;color:#FF2441;line-height:.82">IMPOSTER</div>
+      <div style="color:#1e1e1e;font-size:12px;letter-spacing:3px;margin-top:14px;text-transform:uppercase">The party word game</div>
+    </div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:12px">
+      <button class="btn" onclick="go('setup');initSetup()">Host a Game</button>
+      <button class="btn2" onclick="go('join-code')">Join a Game</button>
+      <div id="resume-wrap" style="display:none">
+        <button class="btn2" id="resume-btn" onclick="resumeLobby()" style="border-color:rgba(255,36,65,.3);color:#FF2441"></button>
+      </div>
+      <div id="rejoin-btn-wrap" style="display:none">
+        <button class="btn2" id="rejoin-btn" onclick="rejoinGame()" style="border-color:rgba(0,194,100,.3);color:#00C264"></button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- FIREBASE COMPAT (IMPORTANT FIX) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- ══ HOST: SETUP ════════════════════════════════════════ -->
+<div id="s-setup" class="screen">
+  <div class="pad">
+    <button class="back" onclick="go('home')">←</button>
+    <div class="title">SETUP</div>
+    <div class="sec">
+      <div class="lbl" id="p-count-lbl">Players (0/10)</div>
+      <div class="row-add">
+        <input class="inp" id="p-inp" placeholder="Add player name…" maxlength="20" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="add-btn" onclick="addPlayer()">+</button>
+      </div>
+      <div class="tags" id="p-tags"></div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Category</div>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Impostors</div>
+      <div class="cnts">
+        <button class="cnt on" id="cnt1" onclick="setCnt(1)">1</button>
+        <button class="cnt"    id="cnt2" onclick="setCnt(2)">2</button>
+        <button class="cnt"    id="cnt3" onclick="setCnt(3)">3</button>
+      </div>
+    </div>
+    <button class="btn off" id="create-btn" onclick="showHostNamePicker()" style="margin-top:auto">Add 3 players to begin</button>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- ══ HOST: PICK YOUR NAME ═══════════════════════════════ -->
+<div id="s-host-name" class="screen">
+  <div class="pad">
+    <button class="back" onclick="go('setup')">←</button>
+    <div class="title">WHICH ONE<br>ARE YOU?</div>
+    <div style="color:#3a3a3a;font-size:14px;margin-bottom:24px;line-height:1.7">Tap your name — you'll be joined automatically as host.</div>
+    <div id="host-name-list"></div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- ══ HOST: LOBBY ════════════════════════════════════════ -->
+<div id="s-lobby" class="screen">
+  <div class="pad">
+    <div class="fu">
+      <div class="code-box">
+        <div style="font-size:11px;color:#7a2020;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Share this code in your group chat</div>
+        <div class="code-big" id="lobby-code"></div>
+        <div style="font-size:12px;color:#3a2020;margin-top:6px">Players open the app and tap "Join a Game"</div>
+      </div>
+      <div class="link-row">
+        <div class="link-txt" id="lobby-link"></div>
+        <button class="copy-btn" onclick="copyLink()">Copy Link</button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="lbl" id="lobby-count-lbl">Waiting for players…</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:4px 16px">
+        <div id="lobby-players"></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto">
+      <button class="btn off" id="start-btn" onclick="startGame()">Waiting for players…</button>
+      <button class="btn2" onclick="cancelGame()">Cancel Game</button>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+<!-- ══ PLAYER: ENTER GAME CODE ════════════════════════════ -->
+<div id="s-join-code" class="screen">
+  <div class="center fu" style="gap:20px">
+    <div style="text-align:center;width:100%">
+      <div style="font-size:40px;margin-bottom:12px">🎮</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:4px">JOIN GAME</div>
+      <div style="color:#2a2a2a;font-size:14px;margin-top:8px">Enter the code from the group chat</div>
+    </div>
+    <div style="width:100%">
+      <input class="inp" id="code-inp" placeholder="e.g. ABCDEF" maxlength="6"
+             style="text-align:center;font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:8px;text-transform:uppercase"
+             oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')lookupCode()">
+      <div id="code-err" style="color:#FF2441;font-size:13px;margin-top:10px;display:none"></div>
+    </div>
+    <button class="btn" onclick="lookupCode()">Find Game →</button>
+    <button class="btn2" onclick="go('home')">Back</button>
+  </div>
+</div>
+
+<!-- ══ PLAYER: ENTER NAME ════════════════════════════════ -->
+<div id="s-join-name" class="screen">
+  <div class="center fu" style="gap:20px">
+    <div style="text-align:center;width:100%">
+      <div class="lbl" id="join-game-lbl"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:4px">WHO ARE YOU?</div>
+      <div style="color:#2a2a2a;font-size:13px;margin-top:8px">The host added your name — type it to match</div>
+    </div>
+    <div style="width:100%">
+      <input class="inp" id="name-inp" placeholder="Type your name…" maxlength="24"
+             oninput="onNameInput()" onkeydown="if(event.key==='Enter')confirmName()">
+      <div id="name-feedback" style="margin-top:10px"></div>
+    </div>
+    <button class="btn off" id="join-btn" onclick="confirmName()">Type your name first</button>
+    <button class="btn2" onclick="go('join-code')">← Back</button>
+  </div>
+</div>
+
+<!-- ══ PLAYER: WAITING ════════════════════════════════════ -->
+<div id="s-waiting" class="screen">
+  <div class="center fu" style="gap:24px">
+    <div style="text-align:center">
+      <div class="spinner" style="margin:0 auto 20px"></div>
+      <div style="font-size:26px;font-weight:600" id="w-name"></div>
+      <div style="color:#3a3a3a;font-size:14px;margin-top:8px">You're in! Waiting for the host to start…</div>
+    </div>
+    <div style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:4px 16px">
+      <div id="waiting-players"></div>
+    </div>
+    <div id="w-pills" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"></div>
+  </div>
+</div>
+
+<!-- ══ PLAYER: ROLE CARD ══════════════════════════════════ -->
+<div id="s-card" class="screen">
+  <div class="center fu" style="gap:22px">
+    <div style="text-align:center;width:100%">
+      <div class="lbl">Your secret role</div>
+      <div style="font-size:30px;font-weight:600;margin-top:4px" id="card-name"></div>
+      <div style="color:#242424;font-size:13px;margin-top:8px">Tap the card — keep your screen private!</div>
+    </div>
+    <div class="card-scene" onclick="flipCard()">
+      <div class="card" id="the-card">
+        <div class="face face-f">
+          <div style="font-size:48px">👁️</div>
+          <div style="color:#1e1e1e;font-size:15px;margin-top:4px">Tap to reveal your role</div>
+        </div>
+        <div class="face face-b" id="card-back">
+          <div id="c-icon" style="font-size:48px"></div>
+          <div id="c-lbl"  style="font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600"></div>
+          <div id="c-word" style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:4px;line-height:1"></div>
+          <div id="c-hint" style="font-size:13px;line-height:1.6;padding:0 8px"></div>
+        </div>
+      </div>
+    </div>
+    <div id="c-pills" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"></div>
+    <div class="info-box" id="c-rules"></div>
+  </div>
+</div>
+
+<!-- ══ ERROR ══════════════════════════════════════════════ -->
+<div id="s-invalid" class="screen">
+  <div class="center" style="text-align:center;gap:16px">
+    <div style="font-size:52px">🤔</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:3px;color:#3a3a3a" id="err-title">GAME NOT FOUND</div>
+    <div style="color:#2a2a2a;font-size:14px;line-height:1.8" id="err-msg">This game doesn't exist or has ended.</div>
+    <button class="btn2" style="margin-top:8px" onclick="go('home')">Back to Home</button>
+  </div>
+</div>
 
 <script>
-/* ================= FIREBASE ================= */
-const firebaseConfig = {
-  databaseURL: "YOUR_REAL_FIREBASE_DB_URL"
+/* ════════ WORD BANKS ════════════════════════════════════ */
+const BANKS = {
+  Places:  ['Beach','Airport','Library','Hospital','Casino','Museum','School','Restaurant','Stadium','Bank','Gym','Church','Prison','Zoo','Theme Park','Submarine','Space Station','Haunted House','Pirate Ship','Circus','Ski Resort','Cruise Ship','Jungle','Desert Island','Courtroom'],
+  Food:    ['Pizza','Sushi','Tacos','Burger','Ramen','Pasta','Steak','Curry','Pancakes','Nachos','Cheesecake','Boba Tea','Hot Dog','Dim Sum','Croissant','Burrito','Pho','Gyoza','Churro','Tiramisu','Lobster','Baklava','Peking Duck','Pad Thai','Falafel'],
+  Animals: ['Dolphin','Eagle','Elephant','Shark','Cheetah','Gorilla','Penguin','Tiger','Wolf','Octopus','Flamingo','Kangaroo','Polar Bear','Sloth','Peacock','Mantis Shrimp','Platypus','Axolotl','Honey Badger','Narwhal','Orca','Snow Leopard','Komodo Dragon','Capybara','Red Panda'],
+  Movies:  ['Titanic','Avatar','Inception','Joker','Interstellar','The Matrix','Parasite','Dune','Oppenheimer','Barbie','Alien','Gladiator','The Shining','Jaws','Avengers','Spirited Away','Top Gun','Clueless','The Godfather','Get Out','Knives Out','Hereditary','Everything Everywhere','Saltburn','Poor Things'],
+  Sports:  ['Soccer','Basketball','Tennis','Swimming','Boxing','Golf','Baseball','Volleyball','Skiing','Surfing','Gymnastics','Wrestling','Cycling','Archery','Fencing','Curling','Polo','Bobsled','Sumo','Parkour','Water Polo','BMX','Rowing','Taekwondo','Rock Climbing'],
+  Jobs:    ['Doctor','Pilot','Chef','Teacher','Astronaut','Firefighter','Detective','Lawyer','Artist','Surgeon','Magician','Spy','Archaeologist','DJ','Bouncer','Taxidermist','Mime','Puppeteer','Lighthouse Keeper','Taste Tester','Bomb Disposal Expert','Crocodile Hunter','Ghost Writer','Competitive Eater','Royal Food Taster'],
 };
+const EMOJIS = {Places:'🗺️',Food:'🍕',Animals:'🦊',Movies:'🎬',Sports:'⚽',Jobs:'💼',Random:'🎲'};
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+/* ════════ UTILS ═════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const shuffle = a => { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]]} return b; };
+const pick = a => a[0|Math.random()*a.length];
+const norm = s => s.toLowerCase().trim();
+const genCode = () => Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[0|Math.random()*24]).join('');
 
-/* ================= DEBUG ================= */
-function log(msg){
-  document.getElementById("debug").innerText += "\n" + msg;
+/* ════════ FUZZY MATCHING ════════════════════════════════ */
+function levenshtein(a, b) {
+  const m=a.length, n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i===0?j:j===0?i:0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j-1],dp[i-1][j],dp[i][j-1]);
+  return dp[m][n];
 }
 
-/* ================= HOST GAME ================= */
-async function createGame(){
-  try {
-    log("Button clicked");
+function fuzzyMatch(input, names) {
+  const ni = norm(input);
+  if(!ni) return [];
+  const thresh = ni.length<=3?1:ni.length<=5?2:3;
+  return names
+    .map(n => {
+      const nn=norm(n);
+      if(nn===ni)                               return{name:n,score:0};
+      if(nn.startsWith(ni)||ni.startsWith(nn))  return{name:n,score:0.5};
+      if(nn.includes(ni)||ni.includes(nn))      return{name:n,score:1};
+      const d=levenshtein(nn,ni);
+      return d<=thresh ? {name:n,score:d} : null;
+    })
+    .filter(Boolean)
+    .sort((a,b)=>a.score-b.score)
+    .map(x=>x.name);
+}
 
-    const host = document.getElementById("hostName").value.trim();
-    if(!host){
-      alert("Enter host name");
-      return;
-    }
+/* ════════ BACKEND: auto-detect window.storage vs Firebase ═ */
+let USE_WS = false;
+let FB_URL  = 'https://imposter-game-8pc-default-rtdb.firebaseio.com';
 
-    const raw = document.getElementById("players").value;
-    const players = raw.split(",").map(x=>x.trim()).filter(Boolean);
+function lsGet(k){ try{ return localStorage.getItem('IMP_'+k); }catch{ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem('IMP_'+k,v); }catch{} }
+function lsDel(k){ try{ localStorage.removeItem('IMP_'+k); }catch{} }
 
-    const code = Math.random().toString(36).substring(2,7).toUpperCase();
+// Deep merge helper for window.storage patches
+function deepMerge(target, patch) {
+  const out = Object.assign({}, target);
+  for(const k of Object.keys(patch)) {
+    if(patch[k]!==null && typeof patch[k]==='object' && !Array.isArray(patch[k]) && typeof out[k]==='object')
+      out[k] = deepMerge(out[k]||{}, patch[k]);
+    else out[k]=patch[k];
+  }
+  return out;
+}
 
-    log("Creating game: " + code);
-
-    await db.ref("games/" + code).set({
-      host,
-      players: [
-        {name:host,taken:true},
-        ...players.map(p=>({name:p,taken:false}))
-      ],
-      status:"lobby",
-      joined:{[host]:true}
-    });
-
-    alert("Game created: " + code);
-
-  } catch (e) {
-    console.log(e);
-    log("ERROR: " + e.message);
+// Unified DB operations
+async function dbGet(code) {
+  if(USE_WS) {
+    try { const r=await window.storage.get('game:'+code,true); return r?JSON.parse(r.value):null; }
+    catch{ return null; }
+  } else {
+    try {
+      const r=await fetch(`${FB_URL}/games/${code}.json`);
+      return r.ok?(await r.json()):null;
+    } catch{ return null; }
   }
 }
-</script>
 
+async function dbSet(code, data) {
+  if(USE_WS) {
+    try {
+      if(data===null) await window.storage.delete('game:'+code,true);
+      else await window.storage.set('game:'+code, JSON.stringify(data), true);
+      return true;
+    } catch{ return false; }
+  } else {
+    try {
+      await fetch(`${FB_URL}/games/${code}.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      return true;
+    } catch{ return false; }
+  }
+}
+
+async function dbPatch(code, patch) {
+  if(USE_WS) {
+    try {
+      const current = await dbGet(code) || {};
+      const merged  = deepMerge(current, patch);
+      await window.storage.set('game:'+code, JSON.stringify(merged), true);
+      return true;
+    } catch{ return false; }
+  } else {
+    try {
+      await fetch(`${FB_URL}/games/${code}.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+      return true;
+    } catch{ return false; }
+  }
+}
+
+/* ════════ POLLING ═══════════════════════════════════════ */
+let pollId = null;
+function startPoll(fn, ms=2500) { stopPoll(); fn(); pollId=setInterval(fn,ms); }
+function stopPoll() { if(pollId){clearInterval(pollId);pollId=null;} }
+
+/* ════════ NAV ═══════════════════════════════════════════ */
+function go(id) {
+  stopPoll();
+  const fullId = id.startsWith('s-')?id:'s-'+id;
+  const el=$(fullId);
+  if(!el){ console.warn('Screen not found:',fullId); return; }
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  window.scrollTo(0,0);
+}
+
+/* ════════ BOOT ══════════════════════════════════════════ */
+async function boot() {
+  // Detect window.storage (Claude artifact preview)
+  try { await window.storage.get('__ping__', true); USE_WS = true; } catch(_) { USE_WS = false; }
+
+  const urlCode = new URLSearchParams(location.search).get('c');
+
+  if(urlCode) {
+    // Deep-linked player join (deployed version)
+    $('code-inp').value = urlCode.toUpperCase();
+    await lookupAndJoin(urlCode.toUpperCase());
+    return;
+  }
+
+  // Check if host has a resumable lobby
+  const hc = lsGet('HOST');
+  if(hc) {
+    const data = await dbGet(hc);
+    if(data && data.status==='lobby') {
+      $('resume-btn').textContent = `Resume Lobby · ${hc}`;
+      $('resume-wrap').style.display = 'block';
+    } else {
+      lsDel('HOST');
+    }
+  }
+
+  // Check if player has an active game they can rejoin
+  const pc = lsGet('PCODE');
+  const pn = pc ? lsGet('PNAME_'+pc) : null;
+  if(pc && pn) {
+    const data = await dbGet(pc);
+    if(data && data.joined?.[pn]) {
+      const rejoinBtn = $('rejoin-btn-wrap');
+      if(rejoinBtn) {
+        $('rejoin-btn').textContent = `Rejoin Game · ${pn}`;
+        rejoinBtn.style.display = 'block';
+        $('rejoin-btn')._code = pc;
+        $('rejoin-btn')._name = pn;
+      }
+    } else {
+      lsDel('PCODE');
+    }
+  }
+
+  go('home');
+}
+
+/* ════════ HOST — SETUP ══════════════════════════════════ */
+let _players=[], _cat='Places', _nImp=1;
+
+function initSetup(){
+  _players=[]; _nImp=1; _cat='Places';
+  $('p-inp').value='';
+  buildCatGrid(); renderTags(); renderCounts(); updateCreateBtn();
+}
+
+function buildCatGrid(){
+  $('cat-grid').innerHTML=[...Object.keys(BANKS),'Random'].map(c=>
+    `<button class="cat${c===_cat?' on':''}" onclick="pickCat('${c}')">
+      <span class="ico">${EMOJIS[c]||'❓'}</span>${esc(c)}
+    </button>`
+  ).join('');
+}
+function pickCat(c){_cat=c;buildCatGrid();}
+function setCnt(n){_nImp=n;renderCounts();}
+function renderCounts(){
+  [1,2,3].forEach(n=>{
+    const b=$('cnt'+n);
+    b.className='cnt'+(n===_nImp?' on':'');
+    b.disabled=(n>=_players.length);
+  });
+}
+function addPlayer(){
+  const inp=$('p-inp');
+  const name=inp.value.trim().replace(/['"<>&]/g,'');
+  if(name&&!_players.find(p=>norm(p)===norm(name))&&_players.length<10){
+    _players.push(name); inp.value='';
+    renderTags(); renderCounts(); updateCreateBtn();
+  }
+  inp.focus();
+}
+function removePlayer(i){
+  _players.splice(i,1);
+  if(_nImp>=_players.length) _nImp=Math.max(1,_players.length-1);
+  renderTags(); renderCounts(); updateCreateBtn();
+}
+function renderTags(){
+  $('p-count-lbl').textContent=`Players (${_players.length}/10)`;
+  $('p-tags').innerHTML=_players.map((p,i)=>
+    `<div class="tag">${esc(p)}<button class="rm" onclick="removePlayer(${i})">×</button></div>`
+  ).join('');
+}
+function updateCreateBtn(){
+  const btn=$('create-btn'), need=3-_players.length;
+  if(_players.length<3){btn.className='btn off';btn.textContent=need===1?'Add 1 more player':`Add ${need} more players`;}
+  else{btn.className='btn';btn.textContent=`Create Game · ${_players.length} players →`;}
+}
+
+/* ════════ HOST — CREATE GAME ════════════════════════════ */
+let _hostCode='', _hostName='';
+
+function showHostNamePicker(){
+  if(_players.length<3)return;
+  $('host-name-list').innerHTML=_players.map(p=>
+    `<div class="suggestion" onclick="selectHostName('${esc(p)}')" style="margin-bottom:10px">
+      <div class="av" style="width:36px;height:36px;flex-shrink:0">${esc(p[0].toUpperCase())}</div>
+      <div style="flex:1;font-weight:500;font-size:16px">${esc(p)}</div>
+      <div style="color:#555;font-size:20px">›</div>
+    </div>`
+  ).join('');
+  go('host-name');
+}
+
+async function selectHostName(name){
+  _hostName=name;
+  $('host-name-list').innerHTML=`<div style="text-align:center;padding:32px"><div class="spinner" style="margin:0 auto 16px"></div><div style="color:#3a3a3a;font-size:14px">Creating game…</div></div>`;
+
+  const catKeys=Object.keys(BANKS);
+  const cat=_cat==='Random'?catKeys[0|Math.random()*catKeys.length]:_cat;
+  _hostCode=genCode();
+
+  const ok=await fetch(`${FB_URL}/games/${code}/players.json`, {
+  method:"PUT",
+  body: JSON.stringify(players)
+});
+
+fetch(`${FB_URL}/games/${code}/joined.json`, {
+  method:"PUT",
+  body: JSON.stringify({[hostName]:true})
+});
+
+  if(!ok){
+    $('host-name-list').innerHTML=`<div style="color:#FF2441;text-align:center;padding:16px">Error — tap to try again</div>`;
+    setTimeout(showHostNamePicker,2000); return;
+  }
+  lsSet('HOST',_hostCode);
+  lsSet('PCODE',_hostCode);
+  lsSet('PNAME_'+_hostCode,name);
+  openLobby(_hostCode);
+}
+
+/* ════════ HOST — LOBBY ══════════════════════════════════ */
+function openLobby(code){
+  _hostCode=code;
+  const base=location.origin+location.pathname;
+  const link=`${base}?c=${code}`;
+  $('lobby-code').textContent=code;
+  $('lobby-link').textContent=link;
+  go('lobby');
+  startPoll(()=>pollLobby(code));
+}
+
+async function resumeLobby(){
+  _hostCode=lsGet('HOST');
+  if(_hostCode) openLobby(_hostCode);
+}
+
+async function rejoinGame(){
+  const btn=$('rejoin-btn');
+  const code=btn._code, name=btn._name;
+  if(!code||!name)return;
+  const data=await dbGet(code);
+  if(!data){lsDel('PCODE');$('rejoin-btn-wrap').style.display='none';return;}
+  if(data.status==='started'&&data.roles?.[name]){
+    showRoleCard(name,data.roles[name]); return;
+  }
+  _playerCode=code; _myName=name;
+  startWaiting(code,name,data);
+}
+
+async function pollLobby(code){
+  const data=await dbGet(code);
+  if(!data)return;
+  const all=data.players||[], joined=data.joined||{};
+  const joinedNames=Object.keys(joined), n=joinedNames.length;
+  $('lobby-count-lbl').textContent=`Players joined · ${n} / ${all.length}`;
+  $('lobby-players').innerHTML=all.map(p=>{
+    const in_=joinedNames.includes(p);
+    return`<div class="prow">
+      <div class="av">${esc(p[0].toUpperCase())}</div>
+      <div style="flex:1;font-weight:500;font-size:15px">${esc(p)}</div>
+      <div class="${in_?'dot-on':'dot-off'}"></div>
+      <div style="font-size:13px;color:${in_?'#00C264':'#2a2a2a'};margin-left:6px">${in_?'Joined':'Waiting'}</div>
+    </div>`;
+  }).join('');
+  const sb=$('start-btn');
+  if(n>=3){sb.className='btn';sb.textContent=`Start Game · ${n} players`;}
+  else{sb.className='btn off';sb.textContent=n===0?'Waiting for players…':`Need ${3-n} more to start`;}
+}
+
+async function startGame(){
+  const data=await dbGet(_hostCode);
+  if(!data)return;
+  const joined=Object.keys(data.joined||{});
+  if(joined.length<3)return;
+  const cat=data.category, word=pick(BANKS[cat]);
+  const sp=shuffle([...joined]);
+  const impSet=new Set(shuffle(sp.map((_,i)=>i)).slice(0,data.impostors));
+  const roles={};
+  sp.forEach((name,i)=>{ roles[name]={isImpostor:impSet.has(i),word:impSet.has(i)?null:word,category:cat,impostors:data.impostors,total:joined.length}; });
+  await fetch(`${FB_URL}/games/${code}/status.json`, {
+  method:"PUT",
+  body: JSON.stringify("started")
+});
+
+fetch(`${FB_URL}/games/${code}/roles.json`, {
+  method:"PUT",
+  body: JSON.stringify(roles)
+});
+  stopPoll();
+  lsDel('HOST');
+  $('resume-wrap').style.display='none';
+  alert(`Game started! All ${joined.length} players can now tap their cards.`);
+  go('home');
+}
+
+async function cancelGame(){
+  if(!confirm('Cancel this game?'))return;
+  await dbSet(_hostCode,null);
+  lsDel('HOST');
+  $('resume-wrap').style.display='none';
+  go('home');
+}
+
+async function copyLink(){
+  const link=`${location.origin+location.pathname}?c=${_hostCode}`;
+  try{ await navigator.clipboard.writeText(link); }
+  catch{ prompt('Copy this link:',link); return; }
+  const b=document.querySelector('.copy-btn');
+  b.textContent='✓ Copied'; setTimeout(()=>b.textContent='Copy Link',2000);
+}
+
+/* ════════ PLAYER — CODE ENTRY ═══════════════════════════ */
+let _playerCode='', _myName='', _joinGameData=null, _pendingMatch=null;
+
+async function lookupCode(){
+  const code=$('code-inp').value.trim().toUpperCase();
+  if(code.length<4){$('code-err').textContent='Enter the full game code'; $('code-err').style.display='block'; return;}
+  $('code-err').style.display='none';
+  await lookupAndJoin(code);
+}
+
+async function lookupAndJoin(code){
+  $('code-err') && ($('code-err').textContent='Looking up game…', $('code-err').style.display='block');
+  const data=await dbGet(code);
+  if(!data){
+    $('code-err') && ($('code-err').textContent='Game not found. Check the code and try again.', $('code-err').style.display='block');
+    go('join-code'); return;
+  }
+  if(data.status==='started'){
+    // Maybe they already joined and refreshed
+    const saved=lsGet('PNAME_'+code);
+    if(saved&&data.roles?.[saved]){ showRoleCard(saved,data.roles[saved]); return; }
+    $('err-title').textContent='GAME STARTED';
+    $('err-msg').textContent='This game already started. Ask the host to start a new one.';
+    go('invalid'); return;
+  }
+  _playerCode=code; _joinGameData=data; _pendingMatch=null;
+  $('join-game-lbl').textContent=`Game ${code} · ${data.players.length} players`;
+  $('name-inp').value=''; $('name-feedback').innerHTML='';
+  $('join-btn').className='btn off'; $('join-btn').textContent='Type your name first';
+  go('join-name');
+}
+
+/* ════════ PLAYER — NAME MATCHING ════════════════════════ */
+function onNameInput(){
+  const input=$('name-inp').value;
+  const data=_joinGameData;
+  if(!data)return;
+  const joined=Object.keys(data.joined||{});
+  const available=data.players.filter(p=>!joined.includes(p));
+  const fb=$('name-feedback'), btn=$('join-btn');
+  _pendingMatch=null;
+
+  if(!input.trim()){
+    fb.innerHTML=''; btn.className='btn off'; btn.textContent='Type your name first';
+    $('name-inp').className='inp'; return;
+  }
+
+  const matches=fuzzyMatch(input,available);
+  const takenMatch=fuzzyMatch(input,data.players.filter(p=>joined.includes(p)));
+
+  // Name belongs to someone already joined
+  if(matches.length===0&&takenMatch.length>0){
+    $('name-inp').className='inp err';
+    fb.innerHTML=`<div style="color:#FF2441;font-size:14px;margin-top:6px">⚠️ <strong>${esc(takenMatch[0])}</strong> already joined.</div>`;
+    btn.className='btn off'; btn.textContent='Name already taken'; return;
+  }
+
+  // Not recognized at all — show suggestions here
+  if(matches.length===0){
+    $('name-inp').className='inp err';
+    const allClose=fuzzyMatch(input,data.players);
+    if(allClose.length>0){
+      fb.innerHTML=`<div style="font-size:13px;color:#555;margin-top:6px;margin-bottom:4px">Did you mean one of these?</div>`+
+        allClose.slice(0,4).map(m=>
+          `<div class="suggestion" onclick="selectMatch('${esc(m)}')" style="margin-top:8px">
+            <div class="av" style="flex-shrink:0">${esc(m[0].toUpperCase())}</div>
+            <div style="flex:1;font-weight:500;font-size:15px">${esc(m)}</div>
+            <div style="color:#555;font-size:18px">›</div>
+          </div>`
+        ).join('');
+    } else {
+      fb.innerHTML=`<div style="color:#555;font-size:14px;margin-top:6px">Name not found — check spelling or ask the host.</div>`;
+    }
+    btn.className='btn off'; btn.textContent='Name not recognized'; return;
+  }
+
+  // Single match — confirm quietly, no list
+  if(matches.length===1){
+    _pendingMatch=matches[0];
+    $('name-inp').className='inp ok';
+    const isExact=norm(matches[0])===norm(input);
+    fb.innerHTML=isExact
+      ? `<div style="color:#00C264;font-size:13px;margin-top:6px">✓ Found</div>`
+      : `<div style="color:#00C264;font-size:13px;margin-top:6px">✓ Joining as <strong>${esc(matches[0])}</strong></div>`;
+    btn.className='btn'; btn.textContent=`Join as ${matches[0]}`; return;
+  }
+
+  // Multiple matches — show list to disambiguate
+  $('name-inp').className='inp ok';
+  fb.innerHTML=`<div style="font-size:13px;color:#555;margin-top:6px;margin-bottom:4px">Which one are you?</div>`+
+    matches.slice(0,4).map(m=>
+      `<div class="suggestion" onclick="selectMatch('${esc(m)}')" style="margin-top:8px">
+        <div class="av" style="flex-shrink:0">${esc(m[0].toUpperCase())}</div>
+        <div style="flex:1;font-weight:500;font-size:15px">${esc(m)}</div>
+        <div style="color:#555;font-size:18px">›</div>
+      </div>`
+    ).join('');
+  btn.className='btn off'; btn.textContent='Select your name above';
+}
+
+function selectMatch(name){
+  _pendingMatch=name;
+  $('name-inp').value=name; $('name-inp').className='inp ok';
+  $('name-feedback').innerHTML=`<div style="color:#00C264;font-size:13px;margin-top:6px">✓ Joining as <strong>${esc(name)}</strong></div>`;
+  $('join-btn').className='btn'; $('join-btn').textContent=`Join as ${name}`;
+}
+
+async function confirmName(){
+  if(!_pendingMatch)return;
+  const name=_pendingMatch, code=_playerCode;
+  $('join-btn').textContent='Joining…'; $('join-btn').className='btn off';
+  // Re-fetch to check for race condition
+  const fresh=await dbGet(code);
+  if(!fresh){go('invalid');return;}
+  if(fresh.status==='started'){$('err-title').textContent='TOO LATE';$('err-msg').textContent='The game already started.';go('invalid');return;}
+  if(fresh.joined?.[name]){
+    $('name-feedback').innerHTML=`<div style="color:#FF2441;font-size:14px;margin-top:4px">⚠️ Someone just took that name. Try again.</div>`;
+    _pendingMatch=null;$('join-btn').className='btn off';$('join-btn').textContent='Type your name first';return;
+  }
+  await fetch(
+  `${FB_URL}/games/${code}/joined/${encodeURIComponent(name)}.json`,
+  {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: 'true'
+  }
+);
+  lsSet('PCODE',code); lsSet('PNAME_'+code,name);
+  _myName=name;
+  startWaiting(code,name,fresh);
+}
+
+/* ════════ PLAYER — WAITING ══════════════════════════════ */
+function startWaiting(code,name,data){
+  $('w-name').textContent=`You're in, ${name}!`;
+  $('w-pills').innerHTML=`<span class="pill">${EMOJIS[data.category]||'🎲'} ${esc(data.category)}</span><span class="pill">🕵️ ${data.impostors} imposter${data.impostors>1?'s':''}</span>`;
+  go('waiting');
+  startPoll(()=>pollWaiting(code,name));
+}
+
+async function pollWaiting(code,name){
+  const data=await dbGet(code);
+  if(!data)return;
+  const all=data.players||[],joined=data.joined||{};
+  $('waiting-players').innerHTML=all.map(p=>{
+    const in_=joined[p];
+    return`<div class="prow">
+      <div class="av">${esc(p[0].toUpperCase())}</div>
+      <div style="flex:1;font-weight:500;font-size:14px">${esc(p)}</div>
+      <div class="${in_?'dot-on':'dot-off'}"></div>
+    </div>`;
+  }).join('');
+  if(data.status==='started'&&data.roles?.[name]){
+    stopPoll(); showRoleCard(name,data.roles[name]);
+  }
+}
+
+/* ════════ PLAYER — ROLE CARD ════════════════════════════ */
+let _cardFlipped=false;
+
+function showRoleCard(name,role){
+  $('card-name').textContent=name; _cardFlipped=false;
+  $('the-card').classList.remove('flipped');
+  const back=$('card-back');
+  if(role.isImpostor){
+    back.className='face face-b face-imp';
+    $('c-icon').textContent='🕵️';
+    $('c-lbl').textContent='You are the'; $('c-lbl').style.color='#7a2020';
+    $('c-word').textContent='IMPOSTER';   $('c-word').style.color='#FF2441';
+    $('c-hint').textContent="You don't know the word. Blend in."; $('c-hint').style.color='#4a1515';
+    $('c-pills').innerHTML=`<span class="pill">📂 ${esc(role.category)}</span><span class="pill">🕵️ ${role.impostors} imposter${role.impostors>1?'s':''}</span>`;
+    $('c-rules').innerHTML=`<strong style="color:#FF2441">Your goal:</strong> Blend in without knowing the word. Listen to everyone's clues and give convincing-sounding answers. If caught, guess the word to still win!`;
+  } else {
+    back.className='face face-b face-crew';
+    $('c-icon').textContent='💬';
+    $('c-lbl').textContent='The word is'; $('c-lbl').style.color='#004d63';
+    $('c-word').textContent=role.word.toUpperCase(); $('c-word').style.color='#fff';
+    $('c-hint').textContent='Give clues. Find the imposter.'; $('c-hint').style.color='#0e2a38';
+    $('c-pills').innerHTML=`<span class="pill">📂 ${esc(role.category)}</span><span class="pill">🕵️ ${role.impostors} imposter${role.impostors>1?'s':''}</span>`;
+    $('c-rules').innerHTML=`<strong style="color:#00C2FF">Your goal:</strong> Give clues that prove you know the word without tipping off the imposter. Then vote in the group chat to expose who's faking it!`;
+  }
+  go('card');
+}
+
+function flipCard(){
+  if(_cardFlipped)return;
+  $('the-card').classList.add('flipped');
+  _cardFlipped=true;
+}
+
+/* ════════ START ═════════════════════════════════════════ */
+boot();
+</script>
 </body>
 </html>
